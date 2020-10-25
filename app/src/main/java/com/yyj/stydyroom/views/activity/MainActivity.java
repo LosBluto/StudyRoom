@@ -1,4 +1,4 @@
-package com.yyj.stydyroom.activity;
+package com.yyj.stydyroom.views.activity;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -16,23 +16,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //初始化
-        NIMClient.init(getApplicationContext(),loginInfo(),options());
     }
 
-    /*
-    获取用户信息
-     */
-    private LoginInfo loginInfo(){
-        return null;
-    }
-
-    /*
-    sdk的配置
-     */
-    private SDKOptions options(){
-        SDKOptions options = new SDKOptions();
-        options.appKey = getApplicationInfo().metaData.getString("com.netease.nim.appKey");
-        return options;
-    }
 }

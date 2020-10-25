@@ -1,3 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">StydyRoom</string>
+    <string name="clear">清除</string>
+    <string name="playback">回放</string>
+    <string name="white_board">白板</string>
+    <string name="fetch_data_error">信息获取失败！</string>
+    <string name="sure_clear_doc">确认清除文档？</string>
+    <string name="sure_clear_white_board">确认清除白板？</string>
+    <string name="join_room_error">房间加入失败</string>
+    <string name="join_room_again">再次加入房间？</string>
+    <string name="wb_room_crate_fail">房间创建失败</string>
+    <string name="join_success">加入成功</string>
+    <string name="pwd_or_account_error">账号密码错误</string>
+    <string name="unknown_error">未知错误!</string>
+    <string name="current_net_not_stable">当前网络不稳定!</string>
+    <string name="im_login_fail">IM登录失败!</string>
+    <string name="im_login_success">IM登录成功</string>
 </resources>

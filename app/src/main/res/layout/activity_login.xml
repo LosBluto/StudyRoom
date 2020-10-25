@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <android.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary_color">
+    </android.widget.Toolbar>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/logo"
+            android:layout_width="208dp"
+            android:layout_height="154dp"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="59dp"
+            android:background="@drawable/logo"
+            android:contentDescription="TODO" />
+
+        <FrameLayout
+            android:id="@+id/login_register_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/logo"
+            android:layout_marginLeft="10dip"
+            android:layout_marginRight="10dip"
+            android:layout_marginTop="10dp">
+
+            <LinearLayout
+                android:id="@+id/login_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon
+                    android:id="@+id/edit_login_account"
+                    android:layout_width="350dp"
+                    android:layout_height="60dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/edittext_back"
+                    android:drawablePadding="15dp"
+                    android:hint="@string/login_hint_account"
+                    android:paddingLeft="15dp"
+                    android:paddingRight="15dp"
+                    android:textColor="@color/input_color"
+                    android:textColorHint="@color/input_color"
+                    android:textCursorDrawable="@null"
+                    android:textSize="17sp" />
+
+                <com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon
+                    android:id="@+id/edit_login_password"
+                    android:layout_width="350dp"
+                    android:layout_height="60dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/edittext_back"
+                    android:drawablePadding="15dp"
+                    android:hint="@string/login_hint_password"
+                    android:inputType="textPassword"
+                    android:longClickable="false"
+                    android:layout_marginTop="10dp"
+                    android:paddingLeft="15dp"
+                    android:paddingRight="15dp"
+                    android:textColor="@color/input_color"
+                    android:textColorHint="@color/input_color"
+                    android:textCursorDrawable="@null"
+                    android:textSize="17sp" />
+
+                <Button
+                    android:id="@+id/done"
+                    android:layout_width="wrap_content"
+                    android:layout_height="70dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginLeft="15dp"
+                    android:layout_marginRight="15dp"
+                    android:layout_marginTop="15dp"
+                    android:text="登录"
+                    android:background="@drawable/actionbar_blue_bg"
+                    android:textColor="@color/white"
+                    android:textSize="17sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/register_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon
+                    android:id="@+id/edit_register_account"
+                    android:layout_width="350dp"
+                    android:layout_height="60dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/edittext_back"
+                    android:digits="1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    android:drawablePadding="15dp"
+                    android:hint="@string/input_account"
+                    android:inputType="text"
+                    android:paddingLeft="15dp"
+                    android:paddingRight="15dp"
+                    android:textColor="@color/input_color"
+                    android:textColorHint="@color/input_color"
+                    android:textCursorDrawable="@null"
+                    android:textSize="17sp" />
+
+                <com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon
+                    android:id="@+id/edit_register_nickname"
+                    android:layout_width="350dp"
+                    android:layout_height="60dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/edittext_back"
+                    android:drawablePadding="15dp"
+                    android:hint="@string/input_nickname"
+                    android:inputType="text"
+                    android:paddingLeft="15dp"
+                    android:paddingRight="15dp"
+                    android:textColor="@color/input_color"
+                    android:textColorHint="@color/input_color"
+                    android:textCursorDrawable="@null"
+                    android:textSize="17sp" />
+
+                <com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon
+                    android:id="@+id/edit_register_password"
+                    android:layout_width="350dp"
+                    android:layout_height="60dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@drawable/edittext_back"
+                    android:drawablePadding="15dp"
+                    android:hint="@string/input_password"
+                    android:inputType="textPassword"
+                    android:longClickable="false"
+                    android:paddingLeft="15dp"
+                    android:paddingRight="15dp"
+                    android:textColor="@color/input_color"
+                    android:textColorHint="@color/input_color"
+                    android:textCursorDrawable="@null"
+                    android:textSize="17sp" />
+
+                <Button
+                    android:id="@+id/register_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="70dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginLeft="15dp"
+                    android:layout_marginTop="15dp"
+                    android:layout_marginRight="15dp"
+                    android:background="@drawable/actionbar_blue_bg"
+                    android:text="完成"
+                    android:textColor="@color/white"
+                    android:textSize="17sp" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/register_login_tip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:padding="20dip"
+            android:text="注册"
+            android:textColor="@color/login_color"
+            android:textSize="15sp" />
+
+    </RelativeLayout>
+
+</LinearLayout>

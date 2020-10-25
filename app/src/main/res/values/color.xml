@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="primary_color">#66ffffff</color>
+    <color name="main_color">#326643</color>
+    <color name="input_color">#ff999999</color>
+    <color name="login_color">#00A396</color>
+    <color name="edit">#EFEDED</color>
+
+</resources>
