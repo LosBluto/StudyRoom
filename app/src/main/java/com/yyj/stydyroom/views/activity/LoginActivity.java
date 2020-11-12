@@ -1,9 +1,11 @@
 package com.yyj.stydyroom.views.activity;
 
-import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Looper;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -21,11 +23,14 @@ import com.netease.nimlib.sdk.auth.LoginInfo;
 import com.yyj.stydyroom.R;
 import com.yyj.stydyroom.base.http.MyServer;
 import com.yyj.stydyroom.base.utils.CheckSumBuilder;
+import com.yyj.stydyroom.study.activity.StudyActivity;
 import com.yyj.stydyroom.views.data.AuthPreferences;
 import com.yyj.stydyroom.views.data.MyCache;
 import com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon;
 
+
 public class LoginActivity extends AppCompatActivity {
+    private static final String KICK_OUT = "KICK_OUT";
 
     private View loginLayout;
     private View registerLayout;
@@ -53,6 +58,25 @@ public class LoginActivity extends AppCompatActivity {
 
         parseLogin();
         parseRegister();
+        parseIntent();                  //判断是否为踢出
+    }
+
+    public static void start(Context context){
+        start(context,false);
+    }
+
+    public static void start(Context context,boolean kickOut){
+        Intent intent = new Intent(context,LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra(KICK_OUT, kickOut);
+        context.startActivity(intent);
+    }
+
+    private void parseIntent() {
+        boolean isKickOut = getIntent().getBooleanExtra(KICK_OUT, false);
+        if (isKickOut) {
+            Toast.makeText(this,"您的账号已被踢出",Toast.LENGTH_LONG).show();
+        }
     }
 
     /*
@@ -99,6 +123,10 @@ public class LoginActivity extends AppCompatActivity {
 
 
                 Toast.makeText(LoginActivity.this,"登陆成功: "+ param.getAccount(),Toast.LENGTH_LONG).show();
+
+                Intent intent = new Intent(LoginActivity.this, StudyActivity.class);
+                startActivity(intent);
+                finish();
             }
 
             @Override
@@ -137,6 +165,7 @@ public class LoginActivity extends AppCompatActivity {
     private void saveLoginInfo(String account,String token){
         AuthPreferences.saveUserAccount(account);
         AuthPreferences.saveUserToken(token);
+
     }
 
     /*
@@ -168,9 +197,10 @@ public class LoginActivity extends AppCompatActivity {
      */
     private void updateBtn(Button button,boolean isEnable){
         button.setEnabled(isEnable);
-//        button.setBackgroundResource(R.drawable.g_white_btn_selector);
-        button.setTextColor(isEnable?getResources().getColor(R.color.white)
-                :getResources().getColor(R.color.color_black_ff999999));
+
+        button.setBackground(isEnable?getResources().getDrawable(R.drawable.actionbar_green_bg)
+                :getResources().getDrawable(R.drawable.anctionbar_gray_bg));
+
     }
 
     /*
@@ -196,7 +226,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void register(){
+    private void register() {
         if (registerMode && !isRegisterInit)
             return;
         if (!checkRegisterContentValid(true))
@@ -209,9 +239,9 @@ public class LoginActivity extends AppCompatActivity {
         final String nickName = registerNickNameEdit.getText().toString();
         final String password = registerPasswordEdit.getText().toString();
 
-        MyServer.getInstance().register(account, nickName, password, new MyServer.MyCallBack<Void>() {
+        MyServer.getInstance().register(account, nickName, password, new MyServer.MyCallBack<String>() {
             @Override
-            public void onSuccess(Void aVoid) {
+            public void onSuccess(String message) {
                 Toast.makeText(LoginActivity.this, R.string.register_success, Toast.LENGTH_SHORT).show();
                 switchMode();                       // 切换回登录
                 loginAccountEdit.setText(account);

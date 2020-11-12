@@ -3,24 +3,16 @@ package com.yyj.stydyroom.base.http;
 import android.os.Handler;
 import android.util.Log;
 
+import com.alibaba.fastjson.JSONException;
 import com.yyj.stydyroom.views.data.MyCache;
 
-import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.io.IOException;
-
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.FormBody;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import com.alibaba.fastjson.JSONObject;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MyServer {
-    private static OkHttpClient client = new OkHttpClient();
+    private static final String TAG = "MY_SERVER";
     private Handler uiHandler = new Handler(MyCache.getContext().getMainLooper());
 
     private static MyServer instance;
@@ -36,56 +28,123 @@ public class MyServer {
         return instance;
     }
 
-    public void register(String account, String nickName, String password,final MyCallBack<Void> callBack){
+    public MyServer() {
+        NimHttpClient.getInstance().init(MyCache.getContext());
+    }
+
+    public void register(String account, String nickName, String password, final MyCallBack<String> callback) {
         String url = "http://47.112.137.62:8080/register";
 
-        RequestBody requestBody = new FormBody.Builder()
-                .add("account",account)
-                .add("password",password)
-                .add("name",nickName)
-                .build();
-        Request request = new Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build();
+        Map<String,String> headers = new HashMap<>();
+        headers.put("Content-Type","application/json; charset=utf-8");
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("account",account);
+        jsonObject.put("password",password);
+        jsonObject.put("name",nickName);
 
-        client.newCall(request).enqueue(new Callback() {
-        @Override
-        public void onFailure(Call call, IOException e) {
-
-        }
-
-        @Override
-        public void onResponse(Call call, Response response) throws IOException {
-            int code = response.code();
-            String resp = response.body().string();
-            if (code != 200) {
-                Log.e("register", "register failed : code = " + code + ", errorMsg = " + resp);
-                if (callBack != null) {
-                    callBack.onFailed(code, resp);
-                }
-                return;
-            }
-
-            try {
-                JSONObject resObj = new JSONObject(resp);
-                int resCode = resObj.getInt("code");
-                if (resCode == 0) {             //让callback在ui线程中
-                    uiHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            callBack.onSuccess(null);
+        NimHttpClient.getInstance().execute(url, headers, jsonObject.toString(), new NimHttpClient.NimHttpCallback() {
+                    @Override
+                    public void onResponse(String response, int code, String errorMsg) {
+                        if (code != 0) {
+                            Log.e(TAG, "create room failed : code = " + code + ", errorMsg = " + errorMsg);
+                            if (callback != null) {
+                                callback.onFailed(code, errorMsg);
+                            }
+                            return;
                         }
-                    });
-                } else {
-                    String error = resObj.getString("message");
-                    callBack.onFailed(resCode, error);
+
+                        try {
+                            JSONObject result = JSONObject.parseObject(response);
+                            if (result.getString("code").equals("0")){
+                                String message = result.getString("data");
+                                callback.onSuccess(message);
+                            }else {
+                                Log.e(TAG, "create room failed : code = " + code + ", errorMsg = " + result.getString("message"));
+                                callback.onFailed(-1,result.getString("message"));
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            callback.onFailed(-1,e.getMessage());
+                        }
+                    }
                 }
-            } catch (JSONException e) {
-                callBack.onFailed(-1, e.getMessage());
+        );
+    }
+
+    public void createRoom(String account, String roomName , final MyCallBack<String> callback){
+        Log.i("createRoom","starting createRoom");
+        String url = "http://47.112.137.62:8080/createRoom";
+
+        Map<String,String> headers = new HashMap<>();
+        headers.put("Content-Type","application/json; charset=utf-8");
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("account",account);
+        jsonObject.put("name",roomName);
+
+        NimHttpClient.getInstance().execute(url, headers, jsonObject.toString(), new NimHttpClient.NimHttpCallback() {
+            @Override
+            public void onResponse(String response, int code, String errorMsg) {
+                if (code != 0) {
+                    Log.e(TAG, "create room failed : code = " + code + ", errorMsg = " + errorMsg);
+                    if (callback != null) {
+                        callback.onFailed(code, errorMsg);
+                    }
+                    return;
+                }
+
+                try {
+                    JSONObject result = JSONObject.parseObject(response);
+                    if (result.getString("code").equals("0")){
+                        String message = result.getString("data");
+                        JSONObject jsonObject1 = JSONObject.parseObject(message);
+                        callback.onSuccess(jsonObject1.getString("roomid"));
+                    }else {
+                        Log.e(TAG, "create room failed : code = " + code + ", errorMsg = " + result.getString("message"));
+                        callback.onFailed(-1,result.getString("message"));
+                    }
+                }catch (JSONException e){
+                    e.printStackTrace();
+                    callback.onFailed(-1,e.getMessage());
+                }
             }
-        }
-    });
+        });
+    }
+
+    public void closeRoom(String account,String roomId,final MyCallBack<String> callback){
+        String url = "http://47.112.137.62:8080/closeRoom";
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type","application/json; charset=utf-8");
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("account",account);
+        jsonObject.put("roomid",roomId);
+
+        NimHttpClient.getInstance().execute(url, headers, jsonObject.toString(), new NimHttpClient.NimHttpCallback() {
+            @Override
+            public void onResponse(String response, int code, String errorMsg) {
+                if (code != 0) {
+                    Log.e(TAG, "create room failed : code = " + code + ", errorMsg = " + errorMsg);
+                    if (callback != null) {
+                        callback.onFailed(code, errorMsg);
+                    }
+                    return;
+                }
+
+                try {
+                    JSONObject result =  JSONObject.parseObject(response);
+                    if (result.getString("code").equals("0")) {
+                        String message = result.getString("data");
+                        callback.onSuccess(message);
+                    }else {
+                        Log.e(TAG, "create room failed : code = " + code + ", errorMsg = " + result.getString("message"));
+                        callback.onFailed(-1, result.getString("message"));
+                    }
+                }catch (JSONException e){
+                    e.printStackTrace();
+                    callback.onFailed(-1,e.getMessage());
+                }
+            }
+        });
     }
 
 }

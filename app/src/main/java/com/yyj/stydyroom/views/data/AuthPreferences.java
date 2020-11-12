@@ -6,6 +6,16 @@ import android.content.SharedPreferences;
 public class AuthPreferences {
     public static final String USER_ACCOUNT_KEY = "account";
     public static final String USER_TOKEN_KEY = "token";
+    public static final  String USER_NAME_KEY = "name";
+
+    public static void saveUserName(String name){
+        saveString(USER_NAME_KEY,name);
+    }
+
+    public static String getUserName(){
+        return getString(USER_NAME_KEY);
+    }
+
 
     public static void saveUserAccount(String account){
         saveString(USER_ACCOUNT_KEY,account);

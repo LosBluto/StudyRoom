@@ -1,13 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "29.0.3"
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
+
+    useLibrary 'org.apache.http.legacy'
 
     defaultConfig {
         applicationId "com.yyj.stydyroom"
         minSdkVersion 27
-        targetSdkVersion 29
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
 
@@ -18,27 +20,53 @@ android {
         }
     }
 
+
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled false //混淆
+            zipAlignEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+//    buildTypes {
+////        debug {
+////            signingConfig signingConfigs.debug
+////        }
+////
+////        release {
+////            minifyEnabled true
+////            zipAlignEnabled true
+////            proguardFile('proguard.cfg')
+////            signingConfig signingConfigs.release
+////        }
+////    }
 
     compileOptions {
         sourceCompatibility = 1.8
         targetCompatibility = 1.8
     }
+
+
 }
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'com.android.support:appcompat-v7:29.0.0'
-    implementation 'com.android.support:design:29.0.0'
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support:design:28.0.0'
+    implementation files('D:\\project\\universal-image-loader-1.9.5.jar')
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-
+    implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.19'
+    implementation 'com.jakewharton:butterknife:8.8.1'
+    annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
+    implementation 'com.alibaba:fastjson:1.1.55.android'                    //阿里json
 
     // 基础功能 (必需)
     implementation 'com.netease.nimlib:basesdk:8.0.0'
@@ -56,5 +84,10 @@ dependencies {
     implementation 'com.netease.nimlib:lucene:8.0.0'
 
     implementation 'com.squareup.okhttp3:logging-interceptor:3.6.0'                 //okhttp
+
+        // 音视频需要
+    implementation 'com.netease.nimlib:avchat:8.0.0'
+
+    implementation 'com.netease.nimlib:nrtc:8.0.0'
 
 }
