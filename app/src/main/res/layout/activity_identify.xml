@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.yyj.stydyroom.study.activity.IdentifyAcitivity"
+    android:orientation="vertical">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/login_color">
+    </android.support.v7.widget.Toolbar>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <include
+            android:id="@+id/userInfo"
+            layout="@layout/userinfo_fragment"/>
+
+        <com.yyj.stydyroom.study.ui.ClearableTextViewWithIcon
+            android:id="@+id/text_friend"
+            android:layout_marginTop="30dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:gravity="center_vertical"
+            android:drawablePadding="20dp"
+            android:textSize="17sp"
+            android:textColor="@color/userText_light_black"
+            android:text="好友"/>
+        <com.yyj.stydyroom.study.ui.ClearableTextViewWithIcon
+            android:id="@+id/text_setting"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:gravity="center_vertical"
+            android:drawablePadding="20dp"
+            android:textSize="17sp"
+            android:textColor="@color/userText_light_black"
+            android:text="设置"/>
+        <com.yyj.stydyroom.study.ui.ClearableTextViewWithIcon
+            android:id="@+id/text_logout"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:gravity="center_vertical"
+            android:drawablePadding="20dp"
+            android:textSize="17sp"
+            android:textColor="@color/userText_light_black"
+            android:text="退出登陆"/>
+
+    </LinearLayout>
+</LinearLayout>

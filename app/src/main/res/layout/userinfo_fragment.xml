@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="100dp"
+    android:background="@color/login_color">
+
+        <ImageView
+            android:id="@+id/image_head"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/default_head"
+            android:layout_marginStart="15dp"
+            android:layout_centerVertical="true"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="12dp"
+            android:layout_centerInParent="true"
+            android:layout_toEndOf="@+id/image_head">
+
+            <TextView
+                android:id="@+id/text_userName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="用户名: "/>
+
+            <TextView
+                android:id="@+id/text_account"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="账号: "/>
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/button_modify"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginEnd="20dp"
+            android:background="@drawable/enter_black_chu"
+            android:layout_centerVertical="true"
+            android:layout_alignParentEnd="true"/>
+
+</RelativeLayout>

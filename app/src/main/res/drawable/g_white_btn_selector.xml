@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <item android:drawable="@drawable/actionbar_blue_bg" android:state_pressed="true" />
+    <item android:drawable="@drawable/actionbar_green_bg" android:state_pressed="true" />
     <item android:drawable="@drawable/g_white_btn_pressed" android:state_enabled="false" />
     <item android:drawable="@drawable/g_white_btn_normal" />
 

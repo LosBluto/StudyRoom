@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/view_layout"
+    android:layout_width="match_parent"
+    android:layout_height="80dp"
+    android:baselineAligned="false"
+    android:orientation="horizontal">
+
+    <FrameLayout
+        android:id="@+id/master_video_layout"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/ic_meeting_background" />
+
+    <FrameLayout
+        android:id="@+id/first_video_layout"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/ic_meeting_background" />
+
+    <FrameLayout
+        android:id="@+id/second_video_layout"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/ic_meeting_background" />
+
+    <FrameLayout
+        android:id="@+id/third_video_layout"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@drawable/ic_meeting_background" />
+
+</LinearLayout>
+
+

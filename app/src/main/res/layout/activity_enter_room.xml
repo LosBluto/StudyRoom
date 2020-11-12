@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/white"
+    android:orientation="vertical">
+
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        app:navigationIcon="@drawable/login"
+        android:background="@color/login_color">
+
+        <TextView
+            android:id="@+id/done"
+            android:layout_width="50dp"
+            android:layout_height="30dp"
+            android:layout_gravity="right"
+            android:layout_marginRight="10dp"
+            android:background="@drawable/g_white_btn_selector"
+            android:gravity="center"
+            android:text="@string/done" />
+    </android.support.v7.widget.Toolbar>
+
+    <TextView
+        android:id="@+id/room_tip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="15dp"
+        android:layout_marginTop="20dp"
+        android:textColor="@color/color_black_999999"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/room_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="15dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/edittext_back"
+        android:hint="请输入创建房间名称"
+        android:padding="5dp"
+        android:textColor="@color/color_black_999999"
+        android:textSize="17sp" />
+
+</LinearLayout>

@@ -6,12 +6,12 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <android.widget.Toolbar
+    <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/primary_color">
-    </android.widget.Toolbar>
+    </android.support.v7.widget.Toolbar>
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -39,7 +39,7 @@
                 android:id="@+id/login_layout"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="vertical">
+                android:orientation="vertical">ng
 
                 <com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon
                     android:id="@+id/edit_login_account"
@@ -82,8 +82,7 @@
                     android:layout_marginLeft="15dp"
                     android:layout_marginRight="15dp"
                     android:layout_marginTop="15dp"
-                    android:text="登录"
-                    android:background="@drawable/actionbar_blue_bg"
+                    android:background="@drawable/actionbar_green_bg"
                     android:textColor="@color/white"
                     android:textSize="17sp" />
             </LinearLayout>
@@ -155,8 +154,7 @@
                     android:layout_marginLeft="15dp"
                     android:layout_marginTop="15dp"
                     android:layout_marginRight="15dp"
-                    android:background="@drawable/actionbar_blue_bg"
-                    android:text="完成"
+                    android:background="@drawable/actionbar_green_bg"
                     android:textColor="@color/white"
                     android:textSize="17sp" />
             </LinearLayout>
@@ -170,7 +168,7 @@
             android:layout_centerHorizontal="true"
             android:padding="20dip"
             android:text="注册"
-            android:textColor="@color/login_color"
+            android:textColor="@color/black"
             android:textSize="15sp" />
 
     </RelativeLayout>

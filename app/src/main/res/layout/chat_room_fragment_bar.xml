@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="5dp">
+
+    <ImageView
+        android:id="@+id/iv_back_arrow"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="8dp"
+        android:background="@drawable/chat_room_back_arrow_selector" />
+
+    <TextView
+        android:id="@+id/tv_room_id"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="5dp"
+        android:layout_toRightOf="@id/iv_back_arrow"
+        android:background="@drawable/gray_circle"
+        android:gravity="center"
+        android:lines="1"
+        android:paddingLeft="5dp"
+        android:paddingRight="5dp"
+        android:text="房间：xxxxx"
+        android:textColor="@color/white"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_online_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
+        android:layout_toLeftOf="@+id/btn_close_student_share"
+        android:background="@color/transparent"
+        android:text="@string/server_broken"
+        android:textColor="@color/color_red_ccfa3c55"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/video_mute_switch_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_toRightOf="@id/tv_room_id"
+        android:background="@drawable/chat_room_video_on_selector" />
+
+    <ImageView
+        android:id="@+id/audio_mute_switch_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="7dp"
+        android:layout_toRightOf="@+id/video_mute_switch_btn"
+        android:background="@drawable/chat_room_audio_on_selector" />
+
+
+    <Button
+        android:id="@+id/btn_close_student_share"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_alignParentRight="true"
+        android:layout_gravity="center|right"
+        android:layout_margin="8dp"
+        android:background="@drawable/chat_room_gray_round_selector"
+        android:gravity="center"
+        android:text="关闭"
+        android:visibility="gone"
+        tools:visibility="visible" />
+</RelativeLayout>
