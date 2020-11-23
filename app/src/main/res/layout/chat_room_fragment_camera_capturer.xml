@@ -6,33 +6,27 @@
     android:baselineAligned="false"
     android:orientation="horizontal">
 
-    <FrameLayout
-        android:id="@+id/master_video_layout"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:background="@drawable/ic_meeting_background" />
 
-    <FrameLayout
+
+    <com.netease.lava.nertc.sdk.video.NERtcVideoView
         android:id="@+id/first_video_layout"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:background="@drawable/ic_meeting_background" />
+        android:layout_marginEnd="2dp"/>
 
-    <FrameLayout
+    <com.netease.lava.nertc.sdk.video.NERtcVideoView
         android:id="@+id/second_video_layout"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:background="@drawable/ic_meeting_background" />
+        android:layout_marginEnd="2dp"/>
 
-    <FrameLayout
+    <com.netease.lava.nertc.sdk.video.NERtcVideoView
         android:id="@+id/third_video_layout"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:background="@drawable/ic_meeting_background" />
+        android:layout_weight="1" />
 
 </LinearLayout>
 

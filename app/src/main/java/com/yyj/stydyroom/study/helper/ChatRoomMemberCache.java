@@ -50,8 +50,7 @@ public class ChatRoomMemberCache {
     private Map<String, List<SimpleCallback<ChatRoomMember>>> frequencyLimitCache = new HashMap<>(); // 重复请求处理
     // 有音视频权限的人员缓存
     private Map<String, Map<String, ChatRoomMember>> permissionCache = new HashMap<>();
-    private Map<String, Map<String, Boolean>> handsUpMemCache = new HashMap<>(); // 举手的成员缓存
-    private Map<String, Boolean> myHandsUpCache = new HashMap<>();
+
     //房间管理监听
     private List<MeetingControlObserver> meetingControlObservers = new ArrayList<>();
 
@@ -73,10 +72,8 @@ public class ChatRoomMemberCache {
         roomMemberChangedObservers.clear();
         roomInfoChangedObservers.clear();
         permissionCache.clear();
-        handsUpMemCache.clear();
         meetingControlObservers.clear();
         roomMsgObservers.clear();
-        myHandsUpCache.clear();
 
     }
 
@@ -87,12 +84,6 @@ public class ChatRoomMemberCache {
 
         if (permissionCache.containsKey(roomId)) {
             permissionCache.remove(roomId);
-        }
-        if (handsUpMemCache.containsKey(roomId)) {
-            handsUpMemCache.remove(roomId);
-        }
-        if (myHandsUpCache.containsKey(roomId)) {
-            myHandsUpCache.remove(roomId);
         }
 
         setRTSOpen(false);
@@ -323,80 +314,8 @@ public class ChatRoomMemberCache {
     }
 
 
-    /**
-     * 成员是否举手 (是否在举手队列中)
-     */
-    public boolean isHansUp(String roomId, String account) {
-        if (handsUpMemCache.containsKey(roomId)) {
-            Map<String, Boolean> mem = handsUpMemCache.get(roomId);
-            if (mem == null || mem.isEmpty()) {
-                return false;
-            }
-            if (mem.containsKey(account)) {
-                return mem.get(account) == null;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * 成员主动举手/取消举手
-     */
-    public void saveMemberHandsUpDown(String roomId, String account, boolean isUp) {
-
-        Map<String, Boolean> membersState = handsUpMemCache.get(roomId);
-        if (membersState == null) {             //若无举手队列，重新创建
-            membersState = new HashMap<>();
-            handsUpMemCache.put(roomId, membersState);
-        }
-
-        membersState.put(account, isUp);
-    }
-
-    /**
-     * 老师清空成员的举手
-     */
-    public void removeHandsUpMem(String roomId, String account) {
-        Map<String, Boolean> membersState = handsUpMemCache.get(roomId);
-
-        if (membersState == null) {
-            return;
-        }
-
-        if (membersState.containsKey(account)) {
-            membersState.remove(account);
-        }
-    }
-
-    /**
-     * 存储自己举手状态
-     */
-    public void saveMyHandsUpDown(String roomId, boolean isHandsUp) {
-        myHandsUpCache.put(roomId, isHandsUp);
-    }
 
 
-    /**
-     * 自己是否举手
-     */
-    public boolean isMyHandsUp(String roomId) {
-        if (myHandsUpCache.get(roomId) == null) {
-            return false;
-        }
-        return myHandsUpCache.get(roomId) == null;
-    }
-
-    /**
-     * 清除该房间所有举手状态
-     *
-     * @param roomId 房间id
-     */
-    public void clearAllHandsUp(String roomId) {
-        if (handsUpMemCache.containsKey(roomId)) {
-            handsUpMemCache.remove(roomId);
-        }
-    }
 
     private static class InstanceHolder {
         final static ChatRoomMemberCache instance = new ChatRoomMemberCache();
@@ -609,21 +528,7 @@ public class ChatRoomMemberCache {
                 for (MeetingControlObserver observer : meetingControlObservers) {
                     observer.onReject(roomId);
                 }
-            } else if (command == MeetingOptCommand.SPEAK_REQUEST.getValue()) {
-
-                // 有人举手发言
-                ChatRoomMemberCache.getInstance().saveMemberHandsUpDown(roomId, customNotification.getFromAccount(), true);
-                for (MeetingControlObserver observer : meetingControlObservers) {
-                    observer.onHandsUp(roomId, customNotification.getFromAccount());
-                }
-            } else if (command == MeetingOptCommand.SPEAK_REQUEST_CANCEL.getValue()) {
-                // 取消举手发言
-                ChatRoomMemberCache.getInstance().saveMemberHandsUpDown(roomId, customNotification.getFromAccount(), false);
-
-                for (MeetingControlObserver observer : meetingControlObservers) {
-                    observer.onHandsDown(roomId, customNotification.getFromAccount());
-                }
-            } else if (command == MeetingOptCommand.SHARE_SCREEN.getValue()) {
+            }  else if (command == MeetingOptCommand.SHARE_SCREEN.getValue()) {
                 //有权限的成员发起屏幕分享通知
                 for (MeetingControlObserver observer : meetingControlObservers) {
                     observer.onShareScreen(roomId, customNotification.getFromAccount());
@@ -665,16 +570,6 @@ public class ChatRoomMemberCache {
          */
         void onSendMyPermission(String roomID, String toAccount);
 
-        /**
-         * 有学生举手发言
-         */
-        void onHandsUp(String roomID, String account);
-
-
-        /**
-         * 举手的学生取消举手或者主动退出互动
-         */
-        void onHandsDown(String roomID, String account);
 
         /**
          * 老师将有互动权限的列表通知给所有人

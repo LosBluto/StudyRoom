@@ -36,9 +36,12 @@ import com.yyj.stydyroom.study.fragment.OnlinePeopleFragment;
 import com.yyj.stydyroom.study.helper.ChatRoomMemberCache;
 import com.yyj.stydyroom.study.helper.MsgHelper;
 import com.yyj.stydyroom.study.helper.VideoListener;
+import com.yyj.stydyroom.study.util.ChatRoomServer;
 import com.yyj.stydyroom.study.util.ShareType;
+import com.yyj.stydyroom.study.util.beans.ChatRoom;
 import com.yyj.stydyroom.views.data.MyCache;
 
+import java.util.List;
 import java.util.Map;
 
 public class ChatRoomActivity extends TActivity implements VideoListener {
@@ -51,11 +54,16 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
 
     private final static String EXTRA_ROOM_INFO = "EXTRA_ROOM_INFO";
 
+    private final static String EXTRA_ROOM_TYPE = "EXTRA_ROOM_TYPE";
+
+
+
 
     /**
      * 聊天室基本信息
      */
     private String roomId;
+    private int roomType;
 
     private ChatRoomInfo roomInfo;
 
@@ -80,12 +88,13 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
     Context context;
 
 
-    public static void start(Context context, String roomId, boolean isCreate) {
+    public static void start(Context context, String roomId,int roomType, boolean isCreate) {
         Intent intent = new Intent();
         intent.setClass(context, ChatRoomActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         intent.putExtra(EXTRA_ROOM_ID, roomId);
         intent.putExtra(EXTRA_MODE, isCreate);
+        intent.putExtra(EXTRA_ROOM_TYPE,roomType);
         context.startActivity(intent);
     }
 
@@ -102,6 +111,8 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
         context = this;
     }
 
+
+
     @Override
     protected void onDestroy() {
         registerObservers(false);
@@ -110,6 +121,7 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
             registerRTSObservers(sessionName, false);
         }
         if (rootFragment != null) {
+            rootFragment.abnormalClose();
             rootFragment.onKickOut();
             rootFragment = null;
         }
@@ -118,6 +130,7 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
 
     private void parseIntent(Bundle savedInstanceState) {
         roomId = getIntent().getStringExtra(EXTRA_ROOM_ID);
+        roomType = getIntent().getIntExtra(EXTRA_ROOM_TYPE,1);
         isCreate = getIntent().getBooleanExtra(EXTRA_MODE, false);
         if (savedInstanceState != null) {
             roomInfo = (ChatRoomInfo) savedInstanceState.getSerializable(EXTRA_ROOM_INFO);
@@ -129,6 +142,11 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
         if (rootFragment != null) {
             rootFragment.onBackPressed();
         }
+    }
+
+    public void abnormalClose(){
+        if (rootFragment != null)
+            rootFragment.abnormalClose();
     }
 
     private void registerObservers(boolean register) {
@@ -299,7 +317,7 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
         if (oldFragment != null) {
             return;
         }
-        rootFragment = ChatRoomRootFragment.newInstance(roomInfo, isCreate);
+        rootFragment = ChatRoomRootFragment.newInstance(roomInfo, roomType,isCreate);
         fragmentManager.beginTransaction().add(R.id.chat_room_fragment_container, rootFragment, "ChatRoomRootFragment")
                 .commit();
     }
@@ -449,4 +467,6 @@ public class ChatRoomActivity extends TActivity implements VideoListener {
             rtsFragment.onStatusNotify();
         }
     }
+
+
 }

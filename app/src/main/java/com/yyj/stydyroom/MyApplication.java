@@ -4,7 +4,9 @@ import android.app.Application;
 import android.content.Context;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.netease.lava.nertc.sdk.NERtcEx;
 import com.netease.nimlib.sdk.NIMClient;
 import com.netease.nimlib.sdk.SDKOptions;
 import com.netease.nimlib.sdk.StatusBarNotificationConfig;
@@ -117,6 +119,14 @@ public class MyApplication extends Application {
 
 
         return options;
+    }
+
+    private void initNERtc(){
+        try {
+            NERtcEx.getInstance().init(getApplicationContext(),"f3be95142ec02f4683e11fc0c337e1ee",null,null);
+        } catch (Exception e) {
+            Toast.makeText(this,"SDK初始化失败",Toast.LENGTH_SHORT).show();
+        }
     }
 
     private String ensureLogDirectory() {

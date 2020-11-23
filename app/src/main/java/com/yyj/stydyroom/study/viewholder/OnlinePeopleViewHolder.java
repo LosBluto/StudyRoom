@@ -85,8 +85,6 @@ public class OnlinePeopleViewHolder extends TViewHolder {
             identityImage.setVisibility(View.GONE);
         }
 
-        boolean isHandsUp = ChatRoomMemberCache.getInstance().isHansUp(roomId,
-                ((OnlinePeopleItem) item).getChatRoomMember().getAccount());
 
         if (onlinePeopleItem.getChatRoomMember().getAccount().equals(MyCache.getAccount())) {
             // item为自己，判断是否有互动权限
@@ -101,10 +99,6 @@ public class OnlinePeopleViewHolder extends TViewHolder {
             // item为别人的情况
             if (onlinePeopleItem.getCreator().equals(MyCache.getAccount())) {
                 // 自己是主播
-                if (isHandsUp) {
-                    // 举手的时候
-                    agreeToInteraction();
-                } else {
                     // 没举手，两种情况。正在互动中和没申请权限
                     if (ChatRoomMemberCache.getInstance().hasPermission(roomId, account)) {
                         // 正在互动中
@@ -112,7 +106,7 @@ public class OnlinePeopleViewHolder extends TViewHolder {
                     } else {
                         permissionBtn.setVisibility(View.GONE);
                     }
-                }
+
             } else {
                 // 自己不是主播
                 permissionBtn.setVisibility(View.GONE);
@@ -178,8 +172,6 @@ public class OnlinePeopleViewHolder extends TViewHolder {
             permissionBtn.setBackgroundResource(R.drawable.nim_red_round_button);
             permissionBtn.setText(R.string.being_interactive);
 
-            // 取消举手发言显示
-            ChatRoomMemberCache.getInstance().saveMemberHandsUpDown(roomId, account, false);
 
             // 同意连麦请求
             MsgHelper.getInstance().sendP2PCustomNotification(roomId, MeetingOptCommand.SPEAK_ACCEPT.getValue(), account, null);

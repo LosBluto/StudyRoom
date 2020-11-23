@@ -1,6 +1,7 @@
 package com.yyj.stydyroom.study.fragment;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -23,6 +24,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.netease.lava.nertc.sdk.NERtc;
+import com.netease.lava.nertc.sdk.NERtcCallback;
+import com.netease.lava.nertc.sdk.NERtcCallbackEx;
+import com.netease.lava.nertc.sdk.NERtcConstants;
+import com.netease.lava.nertc.sdk.NERtcEx;
+import com.netease.lava.nertc.sdk.NERtcParameters;
+import com.netease.lava.nertc.sdk.stats.NERtcStatsObserver;
+import com.netease.lava.nertc.sdk.video.NERtcRemoteVideoStreamType;
+import com.netease.lava.nertc.sdk.video.NERtcVideoView;
 import com.netease.nimlib.sdk.NIMClient;
 import com.netease.nimlib.sdk.avchat.AVChatCallback;
 import com.netease.nimlib.sdk.avchat.AVChatManager;
@@ -67,6 +77,7 @@ import com.yyj.stydyroom.study.util.MeetingConstant;
 import com.yyj.stydyroom.study.util.MeetingOptCommand;
 import com.yyj.stydyroom.study.util.NonScrollViewPager;
 import com.yyj.stydyroom.study.util.ShareType;
+import com.yyj.stydyroom.study.util.enums.RoomType;
 import com.yyj.stydyroom.views.data.MyCache;
 
 import java.util.ArrayList;
@@ -82,6 +93,8 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
     private final static String ROOM_INFO = "room_info";
 
+    private final static String ROOM_TYPE = "room_type";
+
     private final static String IS_CREATE = "is_create";
 
     //允许有权限成员的最大人数
@@ -94,7 +107,6 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
     private static final int CAPTURE_PERMISSION_REQUEST_CODE = 11;
 
-    private Intent mShareScreenIntent;
 
     private Activity activity;
 
@@ -106,18 +118,14 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
     private String roomId;
 
+    private int roomType;
+
     private boolean isPermissionInit = false; // 是否收到其他成员权限
 
     private boolean isMaster = false; // 是否是主播
 
     private VideoListener videoListener;
 
-    private AVChatCameraCapturer cameraCapturer; // 视频采集模块
-
-    private ArrayList<Interactor> interactionList;//有交互权限成员
-
-
-    private TextView tvRoomIdText;
 
     // 开/关 相机
     private ImageView videoMuteSwitchBtn;
@@ -138,7 +146,7 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
 
     // 中间的小画布 ， 第一个是老师的，最多3个互动学生，一共4个
-    private List<ViewGroup> smallVideoViewList;
+    private List<NERtcVideoView> mRemoteUserVvList;
 
 
     // 下面的tab : 讨论 、成员
@@ -154,42 +162,157 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
     private TextView tvShowVideo;
 
-    private TextView tvWhiteBoard;
-
-    // 请求互动 / 结束按钮
-    private TextView interactionStartCloseBtn;
-
-    // 正在屏幕共享的人
-    private Interactor sharingScreenInteractor;
-
     // 加入音视频房间的人
-    private HashSet<String> accountsJoinedAVChannel = new HashSet<>();
+    private HashSet<String> roomMember = new HashSet<>(MAX_PERMISSION_COUNT);
 
-    // 新获取权限的人
-    private HashSet<String> accountsNewPermission = new HashSet<>();
 
     private ShareType preShareType = ShareType.VIDEO;
 
-    private String preUIState;
+    private TextView tv_room_id;
 
     private boolean preOnLine = true;
 
     private boolean isReLogin = false;
 
-    public static ChatRoomRootFragment newInstance(ChatRoomInfo roomInfo, boolean isCreate) {
+    private NERtcVideoView mLocalUserVv;
+    private boolean isShareScreen = false;
+    private boolean muteVideo = false;
+    private boolean muteAudio = false;
+    View cameraCapturerLayout;
+
+    public static ChatRoomRootFragment newInstance(ChatRoomInfo roomInfo,int roomType, boolean isCreate) {
         ChatRoomRootFragment fragment = new ChatRoomRootFragment();
         Bundle args = new Bundle();
         args.putSerializable(ROOM_INFO, roomInfo);
         args.putBoolean(IS_CREATE, isCreate);
+        args.putInt(ROOM_TYPE,roomType);
         fragment.setArguments(args);
         return fragment;
+    }
+
+    private void initNERtc(){
+        try {
+            Log.d(TAG,"init NERtc");
+            NERtcParameters parameters = new NERtcParameters();
+            parameters.set(NERtcParameters.KEY_AUTO_SUBSCRIBE_AUDIO, false);
+            NERtcEx.getInstance().setParameters(parameters); //先设置参数，后初始化
+
+            NERtcEx.getInstance().init(MyCache.getContext(),"f3be95142ec02f4683e11fc0c337e1ee",callback,null);
+            NERtcEx.getInstance().enableLocalAudio(true);
+            NERtcEx.getInstance().enableLocalVideo(true);
+
+            Toast.makeText(activity,"SDK初始化成功",Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG,"初始化失败");
+            Toast.makeText(activity,"SDK初始化失败",Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    private void joinChannel(){
+        NERtcEx.getInstance().joinChannel(null,roomId, Long.parseLong(selfAccount));
+        mLocalUserVv.setZOrderMediaOverlay(true);
+        mLocalUserVv.setScalingType(NERtcConstants.VideoScalingType.SCALE_ASPECT_BALANCED);
+        NERtc.getInstance().setupLocalVideoCanvas(mLocalUserVv);        //绑定view
+        mLocalUserVv.setTag(selfAccount);
+    }
+
+
+    NERtcCallback callback = new NERtcCallback() {
+        @Override
+        public void onJoinChannel(int i, long l, long l1) {
+            Log.d(TAG,"join channel");
+            if (i != AVChatResCode.JoinChannelCode.OK) {
+                Toast.makeText(activity, "joined channel:" + i, Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        @Override
+        public void onLeaveChannel(int i) {
+            NERtc.getInstance().release();
+        }
+
+        @Override
+        public void onUserJoined(long l) {          //有人加入房间的话
+            String account = String.valueOf(l);
+
+            if (isMasterAccount(account)) {
+                onMasterJoin();
+            }
+            int test = 1;
+            roomMember.add(account);
+            ChatRoomMemberCache.getInstance().savePermissionMemberById(roomId,account);
+
+            refreshCanvas(account);
+        }
+
+        @Override
+        public void onUserLeave(long l, int i) {
+            String account = String.valueOf(l);
+
+            if (isMasterAccount(account)) {
+                onMasterLeave();
+            } else {
+                memberOff(account);
+            }
+
+            roomMember.remove(account);
+
+            NERtcVideoView userView = cameraCapturerLayout.findViewWithTag(account);
+            if (userView != null) {
+                userView.setTag(null);
+            }
+
+        }
+
+        @Override
+        public void onUserAudioStart(long l) {
+
+        }
+
+        @Override
+        public void onUserAudioStop(long l) {
+
+        }
+
+        @Override
+        public void onUserVideoStart(long l, int i) {
+            NERtc.getInstance().subscribeRemoteVideoStream(l, NERtcRemoteVideoStreamType.kNERtcRemoteVideoStreamTypeHigh, true);
+        }
+
+        @Override
+        public void onUserVideoStop(long l) {
+
+        }
+
+        @Override
+        public void onDisconnect(int i) {
+            Log.d(TAG,"disconnect");
+        }
+    };
+
+    private void refreshCanvas(String account){
+        for (NERtcVideoView videoView: mRemoteUserVvList){
+            if (videoView.getTag() == null) {
+                videoView.setZOrderMediaOverlay(true);
+                videoView.setScalingType(NERtcConstants.VideoScalingType.SCALE_ASPECT_BALANCED);
+                NERtc.getInstance().setupRemoteVideoCanvas(videoView, Long.parseLong(account));
+                videoView.setTag(account);
+                Log.d(TAG,"setupremoteVideo:"+account);
+                break;
+            }
+        }
     }
 
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+
         rootView = inflater.inflate(R.layout.chat_room_fragment, container, false);
         activity = getActivity();
+
+        initNERtc();
         videoListener = (VideoListener) activity;
         if (!parseRoomInfo()) {
             return rootView;
@@ -199,12 +322,12 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         setupTopPager();
         setupBottomPager();
         setupBottomTabs();
-        setupRtc();
-        updateControlUI(ShareType.VIDEO);
-        updateStudentHandsUpUI();
+        updateControlUI();
         updateVideoAudioMuteSwitchUI();
         requestLivePermission();
         tryRequestAllPermissionMembers();
+
+        joinChannel();
         return rootView;
     }
 
@@ -214,6 +337,7 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         if (args != null) {
             roomInfo = (ChatRoomInfo) args.getSerializable(ROOM_INFO);
             isMaster = args.getBoolean(IS_CREATE, false);
+            roomType = args.getInt(ROOM_TYPE,1);
             if (roomInfo != null) {
                 roomId = roomInfo.getRoomId();
                 masterAccount = roomInfo.getCreator();
@@ -227,36 +351,6 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         return false;
     }
 
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != CAPTURE_PERMISSION_REQUEST_CODE) {
-            return;
-        }
-        if (resultCode != Activity.RESULT_OK || data == null) {
-            Toast.makeText(activity, "你拒绝了分享的权限", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (isShareScreen()) {
-            Toast.makeText(activity, "有人在屏幕共享，不支持切换", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        mShareScreenIntent = data;
-        if (isMaster) {
-            sharingScreenInteractor = findMasterInteractor();
-            sharingScreenInteractor.setCapturerType(Interactor.Status.SHARE_SCREEN);
-            resetVideoCapturer(sharingScreenInteractor);
-            updateControlUI(ShareType.VIDEO);
-            MsgHelper.getInstance().updateRoomInfo(ShareType.VIDEO, masterAccount, roomId);
-
-        } else {
-            MsgHelper.getInstance().sendP2PCustomNotification(roomId, MeetingOptCommand.SHARE_SCREEN.getValue(),
-                                                              masterAccount, null);
-            changeSelfCapturerType(Interactor.Status.SHARE_SCREEN);
-        }
-
-    }
 
     // 向所有人请求成员权限
     private void requestPermissionMembers() {
@@ -308,6 +402,17 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
     }
 
+    /*
+    非正常退出关闭聊天室
+     */
+    public void abnormalClose(){
+        if (masterAccount.equals(selfAccount)) {
+            Log.i(TAG,"CLOSE ROOM");
+            // 自己是老师，则关闭聊天室
+            closeChatRoom();
+        }
+    }
+
     // 关闭聊天室
     private void closeChatRoom() {
         MyServer.getInstance().closeRoom(masterAccount, roomId,
@@ -350,11 +455,10 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
     }
 
 
+    @SuppressLint("SetTextI18n")
     private void findViews() {
-        interactionList = new ArrayList<>();
-        smallVideoViewList = new ArrayList<>(MAX_PERMISSION_COUNT);
+        mRemoteUserVvList = new ArrayList<>(MAX_PERMISSION_COUNT);
         View topBar = findView(R.id.chat_room_top_bar);
-        tvRoomIdText = topBar.findViewById(R.id.tv_room_id);
         tvStatusText = topBar.findViewById(R.id.tv_online_status);
         topBar.findViewById(R.id.iv_back_arrow).setOnClickListener(this);
         videoMuteSwitchBtn = topBar.findViewById(R.id.video_mute_switch_btn);
@@ -363,140 +467,107 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         videoMuteSwitchBtn.setOnClickListener(this);
         audioMuteSwitchBtn.setOnClickListener(this);
         btnCloseStudentShare.setOnClickListener(this);
+        tv_room_id = topBar.findViewById(R.id.tv_room_id);
+        tv_room_id.setText("房间: "+roomId+" 类型: "+RoomType.getTypeByTypeId(roomType));
+
         View topLayout = findView(R.id.chat_room_fragment_top);
         topViewPager = topLayout.findViewById(R.id.new_chat_room_viewpager_top);
         tvShareScreen = topLayout.findViewById(R.id.tv_share_screen);
         tvShowVideo = topLayout.findViewById(R.id.tv_show_video);
-        tvWhiteBoard = topLayout.findViewById(R.id.tv_white_board);
-        interactionStartCloseBtn = topLayout.findViewById(R.id.btn_apply_or_close_interaction);
+
         tvShareScreen.setOnClickListener(this);
         tvShowVideo.setOnClickListener(this);
-        tvWhiteBoard.setOnClickListener(this);
-        interactionStartCloseBtn.setOnClickListener(this);
-        View cameraCapturerLayout = findView(R.id.chat_room_fragment_camera_capturer);
-        // 老师的小画布显示区域
-        ViewGroup masterVideoLayout = cameraCapturerLayout.findViewById(R.id.master_video_layout);
+
+        cameraCapturerLayout = findView(R.id.chat_room_fragment_camera_capturer);
         // 第一个学生显示区域
-        ViewGroup firstVideoLayout = cameraCapturerLayout.findViewById(R.id.first_video_layout);
+        NERtcVideoView firstVideoLayout = cameraCapturerLayout.findViewById(R.id.first_video_layout);
         // 第二个学生显示区域
-        ViewGroup secondVideoLayout = cameraCapturerLayout.findViewById(R.id.second_video_layout);
+        NERtcVideoView secondVideoLayout = cameraCapturerLayout.findViewById(R.id.second_video_layout);
         // 第三个学生显示区域
-        ViewGroup thirdVideoLayout = cameraCapturerLayout.findViewById(R.id.third_video_layout);
-        smallVideoViewList.add(masterVideoLayout);
-        smallVideoViewList.add(firstVideoLayout);
-        smallVideoViewList.add(secondVideoLayout);
-        smallVideoViewList.add(thirdVideoLayout);
+        NERtcVideoView thirdVideoLayout = cameraCapturerLayout.findViewById(R.id.third_video_layout);
+        mRemoteUserVvList.add(firstVideoLayout);
+        mRemoteUserVvList.add(secondVideoLayout);
+        mRemoteUserVvList.add(thirdVideoLayout);
+        for (NERtcVideoView videoView:mRemoteUserVvList){
+            videoView.setOnClickListener(userVvListViewListener);
+        }
+        cameraCapturerLayout.setOnClickListener(this);
         ///////////////////////////////聊天|成员列表切换区域///////////////////////////////////////////////////////
         bottomTabs = findView(R.id.chat_room_chat_tabs);
         bottomViewPager = findView(R.id.new_chat_room_viewpager_bottom);
 
+        mLocalUserVv = topLayout.findViewById(R.id.vv_local_user);      //初始化视频view
     }
 
-    public void setupRtc() {
-        tvRoomIdText.setText(String.format("房间:%s", roomId));
-        // 开启音视频引擎
-        final AVChatManager instance = AVChatManager.getInstance();
-        instance.enableRtc();
-        // 打开视频模块
-        instance.enableVideo();
-        // 如果是主播, 设置本地预览画布
-        if (isMaster) {
-            Interactor masterInteractor = new Interactor(masterAccount, activity, Interactor.Status.CAMERA);
-            interactionList.add(masterInteractor);
-            cameraCapturer = AVChatVideoCapturerFactory.createCameraCapturer(true);
-            instance.setupVideoCapturer(cameraCapturer);
-            instance.setupLocalVideoRender(masterInteractor.getRenderer(), false,
-                                           AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-            instance.startVideoPreview();
-            instance.setParameter(AVChatParameters.KEY_SESSION_MULTI_MODE_USER_ROLE, AVChatUserRole.NORMAL);
-            ChatRoomMemberCache.getInstance().savePermissionMemberById(roomId, masterAccount);
-            ChatRoomMemberCache.getInstance().setRTSOpen(true);
-        } else {
-            instance.setParameter(AVChatParameters.KEY_SESSION_MULTI_MODE_USER_ROLE, AVChatUserRole.AUDIENCE);
-        }
-        instance.setParameter(AVChatParameters.KEY_SERVER_AUDIO_RECORD, true);
-        instance.setParameter(AVChatParameters.KEY_SERVER_VIDEO_RECORD, true);
-        instance.joinRoom2(roomId, AVChatType.VIDEO, new AVChatCallback<AVChatData>() {
+    private View.OnClickListener userVvListViewListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (v.getTag() == null)                 //如果是为被使用的view则不会替换
+                return;
 
-            @Override
-            public void onSuccess(AVChatData avChatData) {
-                if (isDestroyed()) {
-                    return;
+            switch (v.getId()){
+                case R.id.first_video_layout:{
+                    String remoteTag = (String) v.getTag();             //获取tag
+                    String localTag = (String) mLocalUserVv.getTag();
+
+                    if (localTag.equals(selfAccount)) {                 //如果本地tag和self账号相同
+                        NERtc.getInstance().setupLocalVideoCanvas(mRemoteUserVvList.get(0));
+                        NERtc.getInstance().setupRemoteVideoCanvas(mLocalUserVv, Long.parseLong(remoteTag));
+
+                    }else {
+                        NERtc.getInstance().setupLocalVideoCanvas(mLocalUserVv);
+                        NERtc.getInstance().setupRemoteVideoCanvas(mRemoteUserVvList.get(0), Long.parseLong(localTag));
+                    }
+
+                    mLocalUserVv.setTag(remoteTag);                     //交换tag
+                    mRemoteUserVvList.get(0).setTag(localTag);
+
+
+                    break;
                 }
-                if (videoListener != null) {
-                    videoListener.onAVChatData(avChatData);
+                case R.id.second_video_layout:{
+                    String remoteTag = (String) v.getTag();
+                    String localTag = (String) mLocalUserVv.getTag();
+
+                    if (localTag.equals(selfAccount)) {                 //如果本地tag和self账号相同
+                        NERtc.getInstance().setupLocalVideoCanvas(mRemoteUserVvList.get(1));
+                        NERtc.getInstance().setupRemoteVideoCanvas(mLocalUserVv, Long.parseLong(remoteTag));
+                    }else {
+                        NERtc.getInstance().setupLocalVideoCanvas(mLocalUserVv);
+                        NERtc.getInstance().setupRemoteVideoCanvas(mRemoteUserVvList.get(1), Long.parseLong(localTag));
+                    }
+
+                    mLocalUserVv.setTag(remoteTag);
+                    mRemoteUserVvList.get(1).setTag(localTag);
+                    break;
                 }
-                // 设置音量信号监听, 通过AVChatStateObserver的onReportSpeaker回调音量大小
-                AVChatParameters avChatParameters = new AVChatParameters();
-                avChatParameters.setBoolean(AVChatParameters.KEY_AUDIO_REPORT_SPEAKER, true);
-                instance.setParameters(avChatParameters);
-            }
+                case R.id.third_video_layout:{
+                    String remoteTag = (String) v.getTag();
+                    String localTag = (String) mLocalUserVv.getTag();
 
-            @Override
-            public void onFailed(int i) {
-                if (isDestroyed()) {
-                    return;
+                    if (localTag.equals(selfAccount)) {                 //如果本地tag和self账号相同
+                        NERtc.getInstance().setupLocalVideoCanvas(mRemoteUserVvList.get(2));
+                        NERtc.getInstance().setupRemoteVideoCanvas(mLocalUserVv, Long.parseLong(remoteTag));
+                    }else {
+                        NERtc.getInstance().setupLocalVideoCanvas(mLocalUserVv);
+                        NERtc.getInstance().setupRemoteVideoCanvas(mRemoteUserVvList.get(2), Long.parseLong(localTag));
+                    }
+
+                    mLocalUserVv.setTag(remoteTag);
+                    mRemoteUserVvList.get(2).setTag(localTag);
+                    break;
                 }
-                Log.e(TAG, "join channel failed, code:" + i);
-                Toast.makeText(activity, "join channel failed, code:" + i, Toast.LENGTH_SHORT).show();
             }
-
-            @Override
-            public void onException(Throwable throwable) {
-            }
-        });
-
-    }
-
-
-    private void updateControlUI(ShareType shareType) {
-        preShareType = shareType;
-        if (isMaster) {
-            if (isShareScreen() || shareType == ShareType.WHITE_BOARD) {
-                tvShareScreen.setVisibility(View.GONE);
-                tvShowVideo.setVisibility(View.VISIBLE);
-            } else {
-                tvShareScreen.setVisibility(View.VISIBLE);
-                tvShowVideo.setVisibility(View.GONE);
-            }
-            btnCloseStudentShare.setVisibility(isStudentShareScreen() ? View.VISIBLE : View.GONE);
-            tvWhiteBoard.setVisibility(shareType == ShareType.WHITE_BOARD ? View.GONE : View.VISIBLE);
-            return;
         }
-        if (ChatRoomMemberCache.getInstance().hasPermission(roomId, selfAccount)) {
-            tvShareScreen.setVisibility(isShareScreen() ? View.GONE : View.VISIBLE);
-            tvShowVideo.setVisibility(isSelfShareScreen() ? View.VISIBLE : View.GONE);
-            videoMuteSwitchBtn.setVisibility(View.VISIBLE);
-            audioMuteSwitchBtn.setVisibility(View.VISIBLE);
-            interactionStartCloseBtn.setVisibility(View.VISIBLE);
-            interactionStartCloseBtn.setText(R.string.finish);
-            return;
-        }
-        tvShareScreen.setVisibility(View.GONE);
-        tvShowVideo.setVisibility(View.GONE);
-        videoMuteSwitchBtn.setVisibility(View.GONE);
-        audioMuteSwitchBtn.setVisibility(View.GONE);
-        interactionStartCloseBtn.setVisibility(View.VISIBLE);
-        interactionStartCloseBtn.setText(R.string.interaction);
-        tvShareScreen.setVisibility(View.GONE);
+    };
 
-    }
+    private void updateControlUI() {
 
+        tvShareScreen.setVisibility(isShareScreen? View.GONE : View.VISIBLE);
+        tvShowVideo.setVisibility(isShareScreen?View.VISIBLE : View.GONE);
+        videoMuteSwitchBtn.setVisibility(View.VISIBLE);
+        audioMuteSwitchBtn.setVisibility(View.VISIBLE);
 
-    private boolean isSelfShareScreen() {
-        return isShareScreen() && TextUtils.equals(sharingScreenInteractor.getAccount(), selfAccount);
-    }
-
-    private boolean isStudentShareScreen() {
-        return isShareScreen() && !TextUtils.equals(sharingScreenInteractor.getAccount(), masterAccount);
-    }
-
-    private boolean isShareScreen() {
-        return sharingScreenInteractor != null;
-    }
-
-    private boolean isShareScreenAccount(String account) {
-        return isShareScreen() && TextUtils.equals(sharingScreenInteractor.getAccount(), account);
     }
 
     public void onOnlineStatusChanged(boolean isOnline, ChatRoomInfo chatRoomInfo) {
@@ -507,7 +578,7 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         tvStatusText.setVisibility(isOnline ? View.GONE : View.VISIBLE);
         //学生断网重连上来了
         if (!preOnLine && isOnline && !isMaster) {
-            updateTopUI(roomInfo.getExtension());
+
         }
         isReLogin = !preOnLine && isOnline;
         preOnLine = isOnline;
@@ -565,11 +636,12 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
 
 
     private void registerObservers(boolean register) {
-        AVChatManager.getInstance().observeAVChatState(stateObserver, register);
         ChatRoomMemberCache.getInstance().registerMeetingControlObserver(meetingControlObserver, register);
         ChatRoomMemberCache.getInstance().registerRoomMemberChangedObserver(roomMemberChangedObserver, register);
         ChatRoomMemberCache.getInstance().registerRoomInfoChangedObserver(roomInfoChangedObserver, register);
     }
+
+
 
 
     ChatRoomMemberCache.MeetingControlObserver meetingControlObserver = new ChatRoomMemberCache.MeetingControlObserver() {
@@ -580,7 +652,6 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
                 return;
             }
             ChatRoomMemberCache.getInstance().savePermissionMemberById(roomId, selfAccount);
-            chooseSpeechType();
         }
 
         @Override
@@ -598,19 +669,8 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
             ChatRoomMemberCache.getInstance().savePermissionMemberByIds(roomId, accounts);
             //老师重新登陆上来 , 之前是学生在屏幕共享，并且之前就是在大屏上（非白板模式），所以要保留这个学生的大屏
             if (isMaster && isReLogin && preShareType == ShareType.VIDEO) {
-                Iterator<String> iterator = accounts.iterator();
-                while (iterator.hasNext()) {
-                    String account = iterator.next();
-                    if (isShareScreenAccount(account) && !isMasterAccount(account)) {
-                        iterator.remove();
-                    }
-                }
+
             }
-            if (accounts.isEmpty()) {
-                return;
-            }
-            accountsNewPermission.addAll(accounts);
-            tryShowStudentSmallView();
         }
 
         @Override
@@ -634,33 +694,12 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         }
 
         @Override
-        public void onHandsUp(String roomID, String account) {
-            if (checkRoom(roomID)) {
-                return;
-            }
-            onTabChange(true);
-        }
-
-        @Override
-        public void onHandsDown(String roomID, String account) {
-            if (checkRoom(roomID)) {
-                return;
-            }
-            if (ChatRoomMemberCache.getInstance().hasPermission(roomID, account)) {
-                studentPermissionOff(account);
-                MsgHelper.getInstance().sendCustomMsg(roomId, MeetingOptCommand.ALL_STATUS);
-                shareScreenStudentPermissionOff(account);
-            }
-            onTabChange(false);
-        }
-
-        @Override
         public void onStatusNotify(String roomID, List<String> accounts) {
             if (checkRoom(roomID)) {
                 return;
             }
             onPermissionChange(accounts);
-            updateControlUI(preShareType);
+            updateControlUI();
             if (videoListener != null) {
                 videoListener.onStatusNotify();
             }
@@ -671,28 +710,12 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
             if (checkRoom(roomID)) {
                 return;
             }
-            if (sharingScreenInteractor != null) {
-                Log.e(TAG,
-                          "student " + account + " apply share screen , but " + sharingScreenInteractor.getAccount() +
-                          " already do this");
-                return;
-            }
             MsgHelper.getInstance().updateRoomInfo(ShareType.VIDEO, account, roomID);
         }
 
         @Override
         public void onCancelShare(String roomID, String account) {
             if (checkRoom(roomID)) {
-                return;
-            }
-            if (sharingScreenInteractor == null) {
-                Log.e(TAG, "student " + account + " apply cancel share screen , but no one share ");
-                return;
-            }
-            if (!TextUtils.equals(sharingScreenInteractor.getAccount(), account)) {
-                Log.e(TAG, "student " + account +
-                               " apply cancel share screen , but not the small account , share account = " +
-                               sharingScreenInteractor.getAccount() + ",current =" + account);
                 return;
             }
             MsgHelper.getInstance().updateRoomInfo(ShareType.VIDEO, null, roomID);
@@ -708,7 +731,6 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
             if (isMaster) {
                 // 老师自己重新进来
                 if (isMasterAccount(member.getAccount())) {
-                    ChatRoomMemberCache.getInstance().clearAllHandsUp(roomId);
                     // 重新向所有成员请求权限
                     requestPermissionMembers();
                 } else {
@@ -718,26 +740,18 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
                                                                       ChatRoomMemberCache.getInstance()
                                                                                          .getPermissionMembers(roomId));
                 }
-                return;
             }
-            // 老师重新进来,学生要取消自己的举手状态
-            if (isMasterAccount(member.getAccount())) {
-                ChatRoomMemberCache.getInstance().saveMyHandsUpDown(roomId, false);
-                updateStudentHandsUpUI();
-            }
+
 
         }
 
         @Override
         public void onRoomMemberExit(ChatRoomMember member) {
             Log.i(TAG, "onRoomMemberExit , account = " + member.getAccount());
-            studentPermissionOff(member.getAccount());
+            memberOff(member.getAccount());
             if (isMaster) {
-                // 老师要清空离开成员的举手
-                ChatRoomMemberCache.getInstance().removeHandsUpMem(roomId, member.getAccount());
                 //如果是学生离开，需要发通知更新一下权限列表
                 if (!isMasterAccount(member.getAccount())) {
-                    shareScreenStudentPermissionOff(member.getAccount());
                     MsgHelper.getInstance().sendCustomMsg(roomId, MeetingOptCommand.ALL_STATUS);
                 }
             }
@@ -752,58 +766,14 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
             ChatRoomNotificationAttachment attachment = (ChatRoomNotificationAttachment) message.getAttachment();
             if (attachment != null && attachment.getExtension() != null) {
                 Map<String, Object> ext = attachment.getExtension();
-                updateTopUI(ext);
+
             }
         }
     };
 
-
-    // 选择发言方式
-    private void chooseSpeechType() {
-        final CharSequence[] items = {"语音", "视频"}; // 设置选择内容
-        final boolean[] checkedItems = {true, true};// 设置默认选中
-        String content;
-        if (ChatRoomMemberCache.getInstance().isMyHandsUp(roomId)) {
-            content = "老师已通过你的发言申请，\n";
-        } else {
-            content = "老师开通了你的发言权限，\n";
-        }
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity, R.style.Theme_AppCompat_Light_Dialog_Alert);
-        String title = content + "请选择发言方式：";
-        builder.setTitle(title);
-        builder.setMultiChoiceItems(items, checkedItems, (dialog, which, isChecked) -> checkedItems[which] = isChecked)
-               .setPositiveButton("确定", (dialog, which) -> {
-                   if (!ChatRoomMemberCache.getInstance().hasPermission(roomId, selfAccount)) {
-                       return;
-                   }
-                   AVChatManager.getInstance().enableAudienceRole(false);
-                   AVChatManager.getInstance().muteLocalAudio(!checkedItems[0]);
-                   AVChatManager.getInstance().muteLocalVideo(!checkedItems[1]);
-                   ChatRoomMemberCache.getInstance().setRTSOpen(true);
-                   topAdapter.getItem(1).onCurrent();
-                   videoListener.onAcceptConfirm();
-                   updateControlUI(preShareType);
-                   updateVideoAudioMuteSwitchUI();
-                   Interactor selfInteractor = findInteractorByAccount(selfAccount);
-                   if (selfInteractor == null) {
-                       selfInteractor = new Interactor(selfAccount, activity, Interactor.Status.CAMERA);
-                       interactionList.add(selfInteractor);
-                   } else {
-                       selfInteractor.setCapturerType(Interactor.Status.CAMERA);
-                   }
-                   resetVideoCapturer(selfInteractor);
-                   setupRender(selfInteractor);
-                   addRendererToSmallVideoView(selfInteractor);
-               }).setCancelable(false).show();
-    }
-
     private void updateVideoAudioMuteSwitchUI() {
-        videoMuteSwitchBtn.setBackgroundResource(AVChatManager.getInstance()
-                                                              .isLocalVideoMuted() ? R.drawable.chat_room_video_off_selector : R.drawable.chat_room_video_on_selector);
-        audioMuteSwitchBtn.setBackgroundResource(AVChatManager.getInstance()
-                                                              .isLocalAudioMuted() ? R.drawable.chat_room_audio_off_selector : R.drawable.chat_room_audio_on_selector);
-
-
+        videoMuteSwitchBtn.setBackgroundResource(muteVideo ? R.drawable.chat_room_video_off_selector : R.drawable.chat_room_video_on_selector);
+        audioMuteSwitchBtn.setBackgroundResource(muteAudio ? R.drawable.chat_room_audio_off_selector : R.drawable.chat_room_audio_on_selector);
     }
 
 
@@ -905,77 +875,11 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
     }
 
 
-    protected AVChatStateObserver stateObserver = new SimpleAVChatStateObserver() {
-
-        @Override
-        public void onLeaveChannel() {
-            hideInteractor(selfAccount);
-        }
-
-        @Override
-        public void onJoinedChannel(int result, String s, String s1, int i1) {
-            if (result != AVChatResCode.JoinChannelCode.OK) {
-                Toast.makeText(activity, "joined channel:" + result, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            // 老师自己加入频道后，开启预览
-            if (isMaster) {
-                Map<String, Object> ext = new HashMap<>();
-                ext.put(MeetingConstant.SHOW_TYPE, ShareType.VIDEO.getValue());
-                updateTopUI(ext);
-            }
-
-        }
-
-        @Override
-        public void onUserJoined(String account) {
-            accountsJoinedAVChannel.add(account);
-            if (isMasterAccount(account)) {
-                onMasterJoin();
-            } else {
-                tryShowStudentSmallView();
-            }
-        }
-
-
-        @Override
-        public void onFirstVideoFrameAvailable(String account) {
-            Log.i(TAG, "onFirstVideoFrameAvailable = " + account);
-        }
-
-        @Override
-        public void onUserLeave(String account, int i) {
-            accountsJoinedAVChannel.remove(account);
-            if (isMasterAccount(account)) {
-                onMasterLeave();
-            } else {
-                studentPermissionOff(account);
-            }
-
-        }
-
-        @Override
-        public void onReportSpeaker(Map<String, Integer> map, int i) {
-            videoListener.onReportSpeaker(map);
-        }
-
-    };
-
 
     // 老师进入频道
     private void onMasterJoin() {
-        if (isMaster) {
-            return;
-        }
-        Interactor masterInteractor = findInteractorByAccount(masterAccount);
-        if (masterInteractor != null) {
-            return;
-        }
-        masterInteractor = new Interactor(masterAccount, activity, Interactor.Status.CAMERA);
-        interactionList.add(masterInteractor);
-        setupRender(masterInteractor);
         ChatRoomMemberCache.getInstance().savePermissionMemberById(roomId, masterAccount);
-        updateTopUI(roomInfo.getExtension());
+
     }
 
 
@@ -984,14 +888,14 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         if (isDestroyed()) {
             return;
         }
-        Toast.makeText(activity, "老师退出了房间", Toast.LENGTH_SHORT).show();
+        Toast.makeText(activity, "房主退出了房间", Toast.LENGTH_SHORT).show();
         activity.finish();
     }
 
 
     // 将被取消权限的成员从画布移除, 并将角色置为初始状态
-    private void studentPermissionOff(String account) {
-        accountsNewPermission.remove(account);
+    private void memberOff(String account) {
+//        accountsNewPermission.remove(account);
         if (isMasterAccount(account)) {
             return;
         }
@@ -999,27 +903,11 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
             return;
         }
         ChatRoomMemberCache.getInstance().removePermissionMember(roomId, account);
-        hideInteractor(account);
-        if (TextUtils.equals(account, selfAccount)) {
-            changeSelfToAudience();
-        }
     }
 
 
     public void closeStudentPermission(String account) {
-        studentPermissionOff(account);
-        shareScreenStudentPermissionOff(account);
-    }
-
-
-    private void shareScreenStudentPermissionOff(String account) {
-        if (!isShareScreenAccount(account)) {
-            return;
-        }
-        // 如果现在不是视频而是白板，不能更新
-        if (preShareType == ShareType.VIDEO) {
-            MsgHelper.getInstance().updateRoomInfo(ShareType.VIDEO, null, roomId);
-        }
+        memberOff(account);
     }
 
 
@@ -1033,93 +921,13 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
     }
 
 
-    private void changeSelfToAudience() {
-        Log.i(TAG, "changeSelfToAudience...");
-        AVChatManager.getInstance().enableAudienceRole(true);
-        ChatRoomMemberCache.getInstance().setRTSOpen(false);
-        videoListener.onLineFragNotify();
-    }
-
     public void studentPermissionOn(String account) {
         // 更新本地权限缓存, 添加新的成员
         ChatRoomMemberCache.getInstance().savePermissionMemberById(roomId, account);
-        if (isMasterAccount(account)) {
-            return;
-        }
-        accountsNewPermission.add(account);
-        tryShowStudentSmallView();
     }
 
 
-    //切换当前页面top部分的ui
-    private void updateTopUI(Map<String, Object> ext) {
-        if (ext == null || !ext.containsKey(MeetingConstant.SHOW_TYPE)) {
-            return;
-        }
-        int type = (int) ext.get(MeetingConstant.SHOW_TYPE);
-        String shareId = (String) ext.get(MeetingConstant.SHARE_ID);
-        String uiState = type + "#" + shareId;
-        Log.i(TAG, "updateTopUI , ext = " + uiState);
-        if (TextUtils.equals(preUIState, uiState)) {
-            Log.e(TAG, "ui state is equal , uiState = " + uiState);
-            return;
-        }
-        preUIState = uiState;
-        if (type == ShareType.VIDEO.getValue()) {
-            if (topViewPager.getCurrentItem() != 0) {
-                topViewPager.setCurrentItem(0);
-            }
-            if (TextUtils.isEmpty(shareId)) {
-                Interactor masterInteractor = findMasterInteractor();
-                masterInteractor.setCapturerType(Interactor.Status.CAMERA);
-                setBigPreviewLayout(masterInteractor);
-            } else {
-                //在shareId不为空的情况，把有权限的录屏放到大屏
-                sharingScreenInteractor = findInteractorByAccount(shareId);
-                if (sharingScreenInteractor == null) {
-                    sharingScreenInteractor = new Interactor(shareId, activity, Interactor.Status.SHARE_SCREEN);
-                } else {
-                    sharingScreenInteractor.setCapturerType(Interactor.Status.SHARE_SCREEN);
-                }
-                setBigPreviewLayout(sharingScreenInteractor);
-            }
-        } else if (type == ShareType.WHITE_BOARD.getValue()) {
-            if (topViewPager.getCurrentItem() != 1) {
-                topViewPager.setCurrentItem(1);
-            }
-            //1. 切到白板时，把老师放到小屏去，用来显示相机画面
-            Interactor masterInteractor = findMasterInteractor();
-            addRendererToSmallVideoView(masterInteractor);
-            // 2. 切到白板时，如果有之前是学生在共享，放到小屏去，用来显示相机画面
-            if (sharingScreenInteractor != null && sharingScreenInteractor != masterInteractor) {
-                addRendererToSmallVideoView(sharingScreenInteractor);
-            }
-            //3. 一旦到了白板，屏幕共享都会切成相机
-            judgeJustCloseStudentShare();
-            sharingScreenInteractor = null;
-        }
-        updateControlUI(ShareType.statusOfValue(type));
-    }
 
-    private void setupRender(Interactor interactor) {
-        try {
-            AVChatManager instance = AVChatManager.getInstance();
-            if (interactor.getAccount().equals(selfAccount)) {
-                instance.setupLocalVideoRender(null, false, AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-                instance.setupLocalVideoRender(interactor.getRenderer(), false,
-                                               AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-            } else {
-                instance.setupRemoteVideoRender(interactor.getAccount(), null, false,
-                                                AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-                instance.setupRemoteVideoRender(interactor.getAccount(), interactor.getRenderer(), false,
-                                                AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "set up video render error:" + e.getMessage());
-            e.printStackTrace();
-        }
-
-    }
 
 
     // 权限变化
@@ -1134,35 +942,11 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
             }
             // 权限被取消
             if (!newAccounts.contains(oldAccount)) {
-                studentPermissionOff(oldAccount);
+                memberOff(oldAccount);
             }
         }
         newAccounts.removeAll(oldAccounts);
-        accountsNewPermission.addAll(newAccounts);
         ChatRoomMemberCache.getInstance().savePermissionMemberByIds(roomId, newAccounts);
-        tryShowStudentSmallView();
-    }
-
-
-    //显示互动学生的小画布（包含自己的）
-    private void tryShowStudentSmallView() {
-        Iterator<String> newPermissionIterator = accountsNewPermission.iterator();
-        while (newPermissionIterator.hasNext()) {
-            String newPermissionAccount = newPermissionIterator.next();
-            if (accountsJoinedAVChannel.contains(newPermissionAccount)) {
-                newPermissionIterator.remove();
-                if (isMasterAccount(newPermissionAccount)) {
-                    continue;
-                }
-                Interactor interactor = findInteractorByAccount(newPermissionAccount);
-                if (interactor == null) {
-                    interactor = new Interactor(newPermissionAccount, activity, Interactor.Status.CAMERA);
-                    interactionList.add(interactor);
-                }
-                setupRender(interactor);
-                addRendererToSmallVideoView(interactor);
-            }
-        }
     }
 
 
@@ -1181,16 +965,8 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
                 switchMuteAudio();
                 break;
             }
-            case R.id.btn_apply_or_close_interaction: {
-                studentApplyOrCloseInteraction();
-                break;
-            }
             case R.id.btn_close_student_share: {
                 closeStudentShare();
-                break;
-            }
-            case R.id.tv_white_board: {
-                masterShareWhiteBoard();
                 break;
             }
             case R.id.tv_share_screen: {
@@ -1204,167 +980,92 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         }
     }
 
-    private void masterShareWhiteBoard() {
-        //大屏切白板
-        if (preShareType != ShareType.VIDEO) {
+    /*
+    屏幕分享的回调
+     */
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != CAPTURE_PERMISSION_REQUEST_CODE)
+            return;
+        if(resultCode != Activity.RESULT_OK) {
+            Toast.makeText(activity,"你拒绝了录屏请求！",Toast.LENGTH_SHORT).show();
             return;
         }
-        // 如果是老师自己在屏幕共享，小屏切换到视频
-        if (isSelfShareScreen()) {
-            Interactor masterInteractor = findMasterInteractor();
-            masterInteractor.setCapturerType(Interactor.Status.CAMERA);
-            resetVideoCapturer(masterInteractor);
-        }
-        MsgHelper.getInstance().updateRoomInfo(ShareType.WHITE_BOARD, null, roomId);
-    }
-
-
-    private void showVideo() {
-        if (AVChatManager.getInstance().isLocalVideoMuted()) {
-            Toast.makeText(activity, "请先开启发送视频", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        //关闭屏幕共享
-        if (isMaster) {
-            if (isSelfShareScreen()) {
-                Interactor masterInteractor = findMasterInteractor();
-                masterInteractor.setCapturerType(Interactor.Status.CAMERA);
-                resetVideoCapturer(masterInteractor);
+        NERtcEx.getInstance().enableLocalVideo(false); //先停止视频
+        NERtcEx.getInstance().startScreenCapture(NERtcConstants.ScreenProfile.HD720P,data, new MediaProjection.Callback() { //2、再创建录屏capturer
+            @Override
+            public void onStop() {
+                super.onStop();
+                Toast.makeText(activity,"录屏已停止",Toast.LENGTH_SHORT).show();
             }
-            MsgHelper.getInstance().updateRoomInfo(ShareType.VIDEO, null, roomId);
-
-        } else {
-            MsgHelper.getInstance().sendP2PCustomNotification(roomId, MeetingOptCommand.CANCEL_SHARE_SCREEN.getValue(),
-                                                              masterAccount, null);
-            changeSelfCapturerType(Interactor.Status.CAMERA);
-        }
-
+        });
     }
 
+    /**
+     * 视频分享
+     */
+    private void showVideo() {
+        if (isShareScreen) {
+            NERtcEx.getInstance().stopScreenCapture();          //关闭屏幕分享
+
+            NERtcEx.getInstance().enableLocalVideo(true);
+            isShareScreen = false;
+            updateControlUI();
+        }
+    }
+
+    /**
+     * 屏幕分享
+     */
     private void shareScreen() {
-        if (AVChatManager.getInstance().isLocalVideoMuted()) {
-            Toast.makeText(activity, "请先开启发送视频", Toast.LENGTH_SHORT).show();
-            return;
+
+        if (!isShareScreen) {
+            // 如果之前没有人在屏幕共享，则开启屏幕共享
+
+            tryStartScreenCapturer();
+            isShareScreen = true;
+            updateControlUI();
         }
-        if (isShareScreen()) {
-            Toast.makeText(activity, "有人在屏幕共享，不支持切换", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        // 如果之前没有人在屏幕共享，则开启屏幕共享
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            Toast.makeText(activity, "手机版本过低，不支持屏幕共享", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        tryStartScreenCapturer();
 
     }
 
-
-    // 学生申请上麦或主动下麦
-    private void studentApplyOrCloseInteraction() {
-        // 结束互动
-        if (ChatRoomMemberCache.getInstance().hasPermission(roomId, selfAccount)) {
-            cancelInteractionConfirm();
-            return;
-        }
-        // 取消 申请互动
-        if (ChatRoomMemberCache.getInstance().isMyHandsUp(roomId)) {
-            MsgHelper.getInstance().sendP2PCustomNotification(roomId, MeetingOptCommand.SPEAK_REQUEST_CANCEL.getValue(),
-                                                              masterAccount, null);
-            ChatRoomMemberCache.getInstance().saveMyHandsUpDown(roomId, false);
-            updateStudentHandsUpUI();
-            return;
-        }
-        // 申请互动
-        MsgHelper.getInstance().sendP2PCustomNotification(roomId, MeetingOptCommand.SPEAK_REQUEST.getValue(),
-                                                          masterAccount, null);
-        ChatRoomMemberCache.getInstance().saveMyHandsUpDown(roomId, true);
-        updateStudentHandsUpUI();
-        return;
-    }
 
     //  关闭学生的屏幕共享
     private void closeStudentShare() {
         MsgHelper.getInstance().updateRoomInfo(ShareType.VIDEO, null, roomId);
     }
 
-    private void cancelInteractionConfirm() {
-        String message = getString(R.string.exit_interaction);
-        String title = getString(R.string.operation_confirm);
-        String okStr = getString(R.string.exit);
-        EasyAlertDialogHelper.createOkCancelDialog(activity, title, message, okStr, getString(R.string.cancel), true,
-                                                   new EasyAlertDialogHelper.OnDialogActionListener() {
-
-                                                       @Override
-                                                       public void doCancelAction() {
-                                                       }
-
-                                                       @Override
-                                                       public void doOkAction() {
-                                                           if (videoListener != null) {
-                                                               videoListener.onReject();
-                                                           }
-                                                           MsgHelper.getInstance().sendP2PCustomNotification(roomId,
-                                                                                                             MeetingOptCommand.SPEAK_REQUEST_CANCEL
-                                                                                                                     .getValue(),
-                                                                                                             masterAccount,
-                                                                                                             null);
-                                                           ChatRoomMemberCache.getInstance().saveMyHandsUpDown(roomId,
-                                                                                                               false);
-                                                           ChatRoomMemberCache.getInstance().removePermissionMember(
-                                                                   roomId, selfAccount);
-                                                           changeSelfToAudience();
-                                                           updateStudentHandsUpUI();
-                                                           Interactor selfInteractor = findInteractorByAccount(
-                                                                   selfAccount);
-                                                           selfInteractor.release();
-                                                       }
-                                                   }).show();
-    }
 
     // 设置自己的摄像头是否开启
     private void switchMuteVideo() {
-        if (AVChatManager.getInstance().isLocalVideoMuted()) {
+        if (muteVideo) {
             videoMuteSwitchBtn.setBackgroundResource(R.drawable.chat_room_video_on_selector);
-            AVChatManager.getInstance().muteLocalVideo(false);
+            NERtcEx.getInstance().muteLocalVideoStream(false);
+            muteVideo = false;
         } else {
             videoMuteSwitchBtn.setBackgroundResource(R.drawable.chat_room_video_off_selector);
-            AVChatManager.getInstance().muteLocalVideo(true);
+            NERtcEx.getInstance().muteLocalVideoStream(true);
+            muteVideo = true;
         }
     }
 
     // 设置自己的录音是否开启
     private void switchMuteAudio() {
-        if (AVChatManager.getInstance().isLocalAudioMuted()) {
+        if (muteAudio) {
             audioMuteSwitchBtn.setBackgroundResource(R.drawable.chat_room_audio_on_selector);
-            AVChatManager.getInstance().muteLocalAudio(false);
+            NERtcEx.getInstance().muteLocalAudioStream(false);
+            muteAudio = false;
         } else {
             audioMuteSwitchBtn.setBackgroundResource(R.drawable.chat_room_audio_off_selector);
-            AVChatManager.getInstance().muteLocalAudio(true);
+            NERtcEx.getInstance().muteLocalAudioStream(true);
+            muteAudio = true;
         }
     }
 
 
-    private void updateStudentHandsUpUI() {
-        if (isMaster) {
-            return;
-        }
-        // 主播通过，进行互动
-        if (ChatRoomMemberCache.getInstance().hasPermission(roomId, selfAccount)) {
-            interactionStartCloseBtn.setText(R.string.finish);
-        } else if (!ChatRoomMemberCache.getInstance().isMyHandsUp(roomId)) {
-            // 没举手
-            interactionStartCloseBtn.setText(R.string.interaction);
-        }
-        // 举手等待主播通过
-        else if (ChatRoomMemberCache.getInstance().isMyHandsUp(roomId) &&
-                 !ChatRoomMemberCache.getInstance().hasPermission(roomId, selfAccount)) {
-            interactionStartCloseBtn.setText(R.string.cancel);
-
-        }
-
-    }
-
+    /*
+    请求屏幕共享权限
+     */
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     protected void tryStartScreenCapturer() {
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager) getActivity().getSystemService(
@@ -1374,78 +1075,13 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
     }
 
 
-    private void changeSelfCapturerType(int newType) {
-        Interactor selfInteractor = findInteractorByAccount(selfAccount);
-        selfInteractor.setCapturerType(newType);
-        resetVideoCapturer(selfInteractor);
-    }
-
-    /**
-     * 切换当前用户视频类型
-     */
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void resetVideoCapturer(Interactor interactor) {
-        AVChatManager.getInstance().stopVideoPreview();
-        int capturerType = interactor.getCapturerType();
-        // 录屏采集模块
-        AVChatScreenCapturer screenCapturer;
-        switch (capturerType) {
-            case Interactor.Status.CAMERA: {
-                if (cameraCapturer == null) {
-                    cameraCapturer = AVChatVideoCapturerFactory.createCameraCapturer(true);
-                }
-                AVChatManager.getInstance().setupVideoCapturer(cameraCapturer);
-                screenCapturer = null;
-                break;
-            }
-            case Interactor.Status.SHARE_SCREEN: {
-                screenCapturer = AVChatVideoCapturerFactory.createScreenVideoCapturer(mShareScreenIntent,
-                                                                                      new MediaProjection.Callback() {
-
-                                                                                          @Override
-                                                                                          public void onStop() {
-                                                                                              super.onStop();
-                                                                                          }
-                                                                                      });
-                AVChatManager.getInstance().setupVideoCapturer(screenCapturer);
-                break;
-            }
-        }
-        AVChatManager.getInstance().startVideoPreview();
-    }
 
 
     /**
      * @param interactor 大屏即将展示的页面
      */
     private void setBigPreviewLayout(Interactor interactor) {
-        interactor.removeFromParent();
-        // 如果不是屏幕共享
-        if (sharingScreenInteractor == null || interactor.getCapturerType() != Interactor.Status.SHARE_SCREEN) {
-            judgeJustCloseStudentShare();
-            sharingScreenInteractor = null;
-        }
-        //屏幕共享
-        else {
-            if (isStudentShareScreen()) {
-                Interactor masterInteractor = findMasterInteractor();
-                addRendererToSmallVideoView(masterInteractor);
-            }
-        }
-        setBigView(interactor);
-    }
 
-
-    private void judgeJustCloseStudentShare() {
-        //之前是学生做的屏幕共享 ， 现在关闭了，如果还有互动权限先从大屏上移除，放到小屏上
-        if (isStudentShareScreen() && ChatRoomMemberCache.getInstance().hasPermission(roomId, sharingScreenInteractor
-                .getAccount())) {
-            //如果之前是自己做的屏幕共享，现在被老师切掉了，需要切换到视频去
-            if (isSelfShareScreen()) {
-                changeSelfCapturerType(Interactor.Status.CAMERA);
-            }
-            addRendererToSmallVideoView(sharingScreenInteractor);
-        }
     }
 
 
@@ -1458,58 +1094,9 @@ public class ChatRoomRootFragment extends TFragment implements View.OnClickListe
         return TextUtils.equals(account, masterAccount);
     }
 
-    private Interactor findMasterInteractor() {
-        Interactor masterInteractor = findInteractorByAccount(masterAccount);
-        if (masterInteractor == null) {
-            masterInteractor = new Interactor(masterAccount, activity, Interactor.Status.CAMERA);
-            interactionList.add(masterInteractor);
-            setupRender(masterInteractor);
-            Log.e(TAG, "findMasterInteractor , but null , so create one");
-        }
-        return masterInteractor;
-    }
-
-    private Interactor findInteractorByAccount(String account) {
-        for (Interactor interactor : interactionList) {
-            if (TextUtils.equals(interactor.getAccount(), account)) {
-                return interactor;
-            }
-        }
-        return null;
-    }
 
 
-    private void hideInteractor(String account) {
-        Interactor interactor = findInteractorByAccount(account);
-        if (interactor != null) {
-            interactor.release();
-        }
 
-    }
-
-    private void addRendererToSmallVideoView(Interactor interactor) {
-        ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                                                                   ViewGroup.LayoutParams.MATCH_PARENT);
-        interactor.removeFromParent();
-        //老师的放在第一个
-        if (isMasterAccount(interactor.getAccount())) {
-            smallVideoViewList.get(0).addView(interactor.getRenderer(), params);
-            return;
-        }
-        // 学生从第二个开始放
-        for (int i = 1; i < smallVideoViewList.size(); i++) {
-            if (smallVideoViewList.get(i).getChildCount() == 0) {
-                smallVideoViewList.get(i).addView(interactor.getRenderer(), params);
-                return;
-            }
-        }
-        Log.e(TAG, "error , not find empty small video view , id =  " + interactor.getAccount());
-    }
-
-
-    private void setBigView(Interactor interactor) {
-        ((ShareScreenTabFragmentAbs) (topAdapter.getItem(0))).addVideoView(interactor.getRenderer());
-    }
 
 
 }

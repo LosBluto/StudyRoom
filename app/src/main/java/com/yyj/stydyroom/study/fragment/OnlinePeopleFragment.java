@@ -274,22 +274,6 @@ public class OnlinePeopleFragment extends TFragment implements TAdapterDelegate,
         public void onSaveMemberPermission(String roomId, List<String> accounts) {
         }
 
-        @Override
-        public void onHandsUp(String roomID, String account) {
-            if (checkRoom(roomID)) {
-                return;
-            }
-            clearCache();
-            fetchData();
-        }
-
-        @Override
-        public void onHandsDown(String roomID, String account) {
-            if (checkRoom(roomID)) {
-                return;
-            }
-            adapter.notifyDataSetChanged();
-        }
 
         @Override
         public void onStatusNotify(String roomID, List<String> accounts) {
@@ -350,7 +334,6 @@ public class OnlinePeopleFragment extends TFragment implements TAdapterDelegate,
 
     @Override
     public void onKickOutSuccess(String account) {
-        ChatRoomMemberCache.getInstance().removeHandsUpMem(roomId, account);
         for (OnlinePeopleItem item : items) {
             if (item.getChatRoomMember().getAccount().equals(account)) {
                 items.remove(item);

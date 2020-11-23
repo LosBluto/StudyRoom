@@ -10,6 +10,7 @@
     <string name="search_room">搜索房间</string>
     <string name="room_name">房间名称</string>
     <string name="enter_room_id">请输入房间ID号</string>
+    <string name="enter_room_name">请输入房间名称</string>
     <string name="logout_confirm">确定离开房间吗？</string>
     <string name="no_data">暂无数据</string>
     <string name="chat_room_message">讨论</string>
@@ -24,9 +25,9 @@
     <string name="speaking">当前轮到你发言</string>
     <string name="kick_out_meeting">请出会议</string>
     <string name="kick_out_meeting_success">请出会议成功</string>
-    <string name="kick_out_by_master">你已被老师请出会议</string>
-    <string name="meeting_closed">老师已经结束了会议</string>
-    <string name="speak_reject">你已被老师取消发言</string>
+    <string name="kick_out_by_master">你已被管理员请出会议</string>
+    <string name="meeting_closed">管理员已经结束了会议</string>
+    <string name="speak_reject">你已被管理员取消发言</string>
     <string name="agree_to_interaction">允许互动</string>
     <string name="being_interactive">结束互动</string>
     <string name="cancel_permission_confirm">确定取消该用户的互动权限？</string>

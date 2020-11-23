@@ -24,18 +24,18 @@ public class Interactor {
 
     private final String account;
 
-    private AVChatTextureViewRenderer renderer;//画布
+//    private AVChatTextureViewRenderer renderer;//画布
 
     private int capturerType;//当前捕捉器模式
 
-    private Context context;
+//    private Context context;
 
 
     public Interactor(String account, Context context, int state) {
         this.account = account;
-        this.renderer = new AVChatTextureViewRenderer(context);
+//        this.renderer = new AVChatTextureViewRenderer(context);
         this.capturerType = state;
-        this.context = context;
+//        this.context = context;
 
     }
 
@@ -44,9 +44,9 @@ public class Interactor {
     }
 
 
-    public AVChatTextureViewRenderer getRenderer() {
-        return renderer;
-    }
+//    public AVChatTextureViewRenderer getRenderer() {
+//        return renderer;
+//    }
 
 
     public int getCapturerType() {
@@ -58,33 +58,33 @@ public class Interactor {
     }
 
 
-    public void release() {
-        if (renderer.getParent() == null) {
-            return;
-        }
-        removeFromParent();
-        try {
-            if (TextUtils.equals(account, MyCache.getAccount())) {
-                AVChatManager.getInstance().setupLocalVideoRender(null, false,
-                                                                  AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-            } else {
-                AVChatManager.getInstance().setupRemoteVideoRender(account, null, false,
-                                                                   AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
-            }
-        } catch (Throwable throwable) {
-            renderer.release();
-            Log.e(TAG, "release render err : " + throwable.getMessage());
-            throwable.printStackTrace();
-        }
-        this.renderer = new AVChatTextureViewRenderer(context);
-    }
+//    public void release() {
+//        if (renderer.getParent() == null) {
+//            return;
+//        }
+//        removeFromParent();
+//        try {
+//            if (TextUtils.equals(account, MyCache.getAccount())) {
+//                AVChatManager.getInstance().setupLocalVideoRender(null, false,
+//                                                                  AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
+//            } else {
+//                AVChatManager.getInstance().setupRemoteVideoRender(account, null, false,
+//                                                                   AVChatVideoScalingType.SCALE_ASPECT_BALANCED);
+//            }
+//        } catch (Throwable throwable) {
+//            renderer.release();
+//            Log.e(TAG, "release render err : " + throwable.getMessage());
+//            throwable.printStackTrace();
+//        }
+//        this.renderer = new AVChatTextureViewRenderer(context);
+//    }
 
 
-    public void removeFromParent() {
-        if (renderer.getParent() == null) {
-            return;
-        }
-        ((ViewGroup) renderer.getParent()).removeAllViews();
-    }
+//    public void removeFromParent() {
+//        if (renderer.getParent() == null) {
+//            return;
+//        }
+//        ((ViewGroup) renderer.getParent()).removeAllViews();
+//    }
 
 }

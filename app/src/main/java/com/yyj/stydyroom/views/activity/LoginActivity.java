@@ -28,6 +28,8 @@ import com.yyj.stydyroom.views.data.AuthPreferences;
 import com.yyj.stydyroom.views.data.MyCache;
 import com.yyj.stydyroom.views.ui.widget.ClearableEditTextWithIcon;
 
+import java.util.regex.Pattern;
+
 
 public class LoginActivity extends AppCompatActivity {
     private static final String KICK_OUT = "KICK_OUT";
@@ -186,7 +188,7 @@ public class LoginActivity extends AppCompatActivity {
         public void afterTextChanged(Editable s) {
             if (!registerMode){             //不在注册
                 boolean isEnable = loginAccountEdit.getText().length()>0
-                        && loginPasswordEdit.getText().length()>0;
+                        && loginPasswordEdit.getText().length()>0 && isInteger(loginAccountEdit.getText().toString());
                 updateBtn(loginBtn,isEnable);
             }
         }
@@ -269,8 +271,10 @@ public class LoginActivity extends AppCompatActivity {
             return false;
         }
 
+
+        String account = registerAccountEdit.getText().toString();
         // 帐号检查
-        if (registerAccountEdit.length() <= 0 || registerAccountEdit.length() > 20) {
+        if (registerAccountEdit.length() <= 0 || registerAccountEdit.length() > 20 || !isInteger(account)) {
             if (tipError) {
                 Toast.makeText(this, R.string.register_account_tip, Toast.LENGTH_SHORT).show();
             }
@@ -298,6 +302,11 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         return true;
+    }
+
+    public static boolean isInteger(String str) {
+        Pattern pattern = Pattern.compile("[0-9]*");
+        return pattern.matcher(str).matches();
     }
 
 

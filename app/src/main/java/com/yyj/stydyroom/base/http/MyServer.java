@@ -55,6 +55,7 @@ public class MyServer {
 
                         try {
                             JSONObject result = JSONObject.parseObject(response);
+
                             if (result.getString("code").equals("0")){
                                 String message = result.getString("data");
                                 callback.onSuccess(message);
@@ -71,7 +72,7 @@ public class MyServer {
         );
     }
 
-    public void createRoom(String account, String roomName , final MyCallBack<String> callback){
+    public void createRoom(int roomType,String account, String roomName , final MyCallBack<String> callback){
         Log.i("createRoom","starting createRoom");
         String url = "http://47.112.137.62:8080/createRoom";
 
@@ -80,6 +81,7 @@ public class MyServer {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("account",account);
         jsonObject.put("name",roomName);
+        jsonObject.put("room_type",String.valueOf(roomType));
 
         NimHttpClient.getInstance().execute(url, headers, jsonObject.toString(), new NimHttpClient.NimHttpCallback() {
             @Override
@@ -148,3 +150,4 @@ public class MyServer {
     }
 
 }
+
